@@ -1,10 +1,31 @@
 import numpy as np
 from scipy import sparse
-import tqdm
 import h5py
 
-class SK:
 
+def load_J(filename):
+	infile = h5py.File(filename,'r')
+	J = np.array(infile['J'])
+	return J
+
+def load_data(filename):
+	infile = h5py.File(filename,'r')
+	
+	confkeys = list(infile['configurations'].keys())
+	B = len(confkeys)
+
+	spin = np.array(infile['configurations'][confkeys[0]])
+	N = len(spin)
+
+	print("N =",N,"B =",B)
+
+	data = np.zeros((B,N))
+	for i,k in enumerate(confkeys):
+		data[i] = np.array(infile['configurations'][k])
+
+	return data
+
+class SK:
 	def __init__(self, N, p, outputfile=None, inputfile=None):
 		self.N = N
 		self.p = p
@@ -52,7 +73,7 @@ class SK:
 	def step(self,beta=None):
 
 		pick = 	np.random.randint(self.N)
-		neighbours =  -np.dot(self.J[pick], self.spin)
+		neighbours =  -np.dot(self.J[pick], self.spin) # check the sign!
 		delta = -2*self.spin[pick]*neighbours
 
 		if delta<0:
@@ -70,21 +91,3 @@ class SK:
 		assert self.outputfile != None,'Output file missing'
 		self.confs.create_dataset(str(self.nsweep),data=self.spin)
 
-
-sk = SK(10,1, outputfile ='data.hdf5')
-beta = 1.0
-mcsweeps =10**6	
-
-
-for sweep in tqdm.tqdm(range(mcsweeps)):
-	sk.sweep(beta)
-	if sweep%10==0:
-		sk.store()
-
-def load_J(filename):
-	infile = h5py.File(filename,'r')
-	J = np.array(infile['J'])
-	return J
-
-d = load_data("data.hdf5")
-np.savez("data.npz",d)
